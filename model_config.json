@@ -1,0 +1,31 @@
+{
+  "default_model": "deepseek-v4-pro",
+  "system_prompt": "You are a precise, helpful assistant. Use attached files as context when they are provided.",
+  "timeout_seconds": 120,
+  "max_retries": 2,
+  "retry_backoff_seconds": 1.5,
+  "text_attachment_max_chars": 120000,
+  "models": [
+    {
+      "id": "deepseek-v4-pro",
+      "display_name": "DeepSeek V4 Pro",
+      "provider": "deepseek",
+      "base_url": "https://api.deepseek.com",
+      "endpoint": "/chat/completions",
+      "model": "deepseek-chat",
+      "model_env": "DEEP_SEEK_MODEL",
+      "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
+      "temperature": 0.2
+    },
+    {
+      "id": "deepseek-reasoner",
+      "display_name": "DeepSeek Reasoner",
+      "provider": "deepseek",
+      "base_url": "https://api.deepseek.com",
+      "endpoint": "/chat/completions",
+      "model": "deepseek-reasoner",
+      "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
+      "temperature": 0.2
+    }
+  ]
+}
