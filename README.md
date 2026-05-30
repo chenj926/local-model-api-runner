@@ -97,9 +97,9 @@ The default profile is `deepseek-v4-pro`:
 - Provider model: `deepseek-v4-pro`
 - Thinking: `enabled`
 - Reasoning effort: `max`
-- Max tokens: `8192`
+- Max tokens: provider default
 
-Increase or reduce `max_tokens` in `model_config.json` when you want longer or shorter responses. This caps generated output; your full request still has to fit inside the provider context window.
+Add `max_tokens` to a model profile in `model_config.json` only when you want to explicitly cap generated output. Without it, the request uses the provider default; your full request still has to fit inside the provider context window.
 
 ## GitHub Safety
 

@@ -15,8 +15,7 @@
       "model": "deepseek-v4-pro",
       "thinking": "enabled",
       "reasoning_effort": "max",
-      "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
-      "max_tokens": 8192
+      "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"]
     },
     {
       "id": "deepseek-v4-pro-nonthinking",
@@ -27,8 +26,7 @@
       "model": "deepseek-v4-pro",
       "thinking": "disabled",
       "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
-      "temperature": 0.2,
-      "max_tokens": 8192
+      "temperature": 0.2
     }
   ]
 }
