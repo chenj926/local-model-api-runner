@@ -30,6 +30,7 @@ def main() -> None:
     print(f"API key env: {result.api_key_env}")
     print(f"Included attachments: {len(result.included_attachments)}")
     print(f"Skipped attachments: {len(result.skipped_attachments)}")
+    print(f"Usage: {_format_usage(result.usage)}")
     print(f"Saved markdown: {result.markdown_path}")
     print(f"Saved raw JSON: {result.json_path}")
     print()
@@ -41,6 +42,26 @@ def _resolve_path(root_dir: Path, value: str) -> Path:
     if path.is_absolute():
         return path
     return root_dir / path
+
+
+def _format_usage(usage: dict[str, object]) -> str:
+    if not usage:
+        return "not returned by provider"
+
+    prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = usage.get("completion_tokens")
+    total_tokens = usage.get("total_tokens")
+    parts = []
+    if prompt_tokens is not None:
+        parts.append(f"prompt={prompt_tokens}")
+    if completion_tokens is not None:
+        parts.append(f"completion={completion_tokens}")
+    if total_tokens is not None:
+        parts.append(f"total={total_tokens}")
+
+    if parts:
+        return ", ".join(parts)
+    return ", ".join(f"{key}={value}" for key, value in usage.items())
 
 
 if __name__ == "__main__":

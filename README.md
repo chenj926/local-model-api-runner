@@ -53,10 +53,10 @@ python .\api_call.py
 
 The script prints the answer and saves two files in `outputs/`:
 
-- `.md`: human-readable response with metadata and the original prompt
-- `.json`: raw API response for debugging or later processing
+- `.md`: human-readable response with metadata, token usage, and the original prompt
+- `.json`: raw API response for debugging, exact usage details, or later processing
 
-Markdown is the default reading format because it is easy to open, search, copy, and archive. Keeping the raw JSON beside it is useful when you need token usage, provider metadata, or exact response details.
+Markdown is the default reading format because it is easy to open, search, copy, and archive. Keeping the raw JSON beside it is useful when you need provider metadata or exact response details.
 
 ## Switch Models
 

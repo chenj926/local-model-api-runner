@@ -25,6 +25,7 @@ class PipelineRunResult:
     markdown_path: Path
     json_path: Path
     answer: str
+    usage: dict[str, Any]
     included_attachments: list[str]
     skipped_attachments: list[str]
 
@@ -51,6 +52,7 @@ def run_pipeline(
 
     response = call_openai_compatible_chat(profile, config, api_key, messages)
     answer = extract_answer_text(response).strip()
+    usage = _extract_usage(response)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
@@ -70,6 +72,7 @@ def run_pipeline(
         "input_dir": str(input_dir),
         "included_attachments": included,
         "skipped_attachments": skipped,
+        "usage": usage,
     }
 
     markdown_path.write_text(
@@ -88,6 +91,7 @@ def run_pipeline(
         markdown_path=markdown_path,
         json_path=json_path,
         answer=answer,
+        usage=usage,
         included_attachments=included,
         skipped_attachments=skipped,
     )
@@ -113,6 +117,7 @@ def _compose_user_content(prompt: str, attachment_context: str, skipped: list[st
 def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
     included = metadata["included_attachments"] or ["None"]
     skipped = metadata["skipped_attachments"] or ["None"]
+    usage_lines = _render_usage_lines(metadata.get("usage", {}))
     return "\n".join(
         [
             "# Model Call Output",
@@ -122,6 +127,7 @@ def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
             f"- API key env: {metadata['api_key_env']}",
             "- Included attachments: " + ", ".join(included),
             "- Skipped attachments: " + ", ".join(skipped),
+            *usage_lines,
             "",
             "## Prompt",
             "",
@@ -138,3 +144,30 @@ def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
 def _safe_filename(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-")
     return cleaned or "model"
+
+
+def _extract_usage(response: dict[str, Any]) -> dict[str, Any]:
+    usage = response.get("usage")
+    if isinstance(usage, dict):
+        return usage
+    return {}
+
+
+def _render_usage_lines(usage: dict[str, Any]) -> list[str]:
+    if not usage:
+        return ["- Usage: not returned by provider"]
+
+    prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = usage.get("completion_tokens")
+    total_tokens = usage.get("total_tokens")
+    known_parts = []
+    if prompt_tokens is not None:
+        known_parts.append(f"prompt={prompt_tokens}")
+    if completion_tokens is not None:
+        known_parts.append(f"completion={completion_tokens}")
+    if total_tokens is not None:
+        known_parts.append(f"total={total_tokens}")
+
+    if known_parts:
+        return ["- Usage: " + ", ".join(known_parts)]
+    return ["- Usage: " + ", ".join(f"{key}={value}" for key, value in usage.items())]
