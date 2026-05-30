@@ -6,15 +6,15 @@ A small local pipeline for running prompts against OpenAI-compatible chat APIs. 
 
 ```text
 .
-├── api_call.py          # Run one model call
-├── switch_model.py      # Show, list, or switch the default model
-├── prompt.txt           # Write your prompt here
-├── model_config.json    # Model profiles and API key env matching
-├── .env.example         # Example local env file
-├── data/                # Optional source/reference files
-├── inputs/              # Drop files here to attach them to the call
-├── outputs/             # Generated responses
-└── llm_pipeline/        # Pipeline implementation
+|-- api_call.py          # Run one model call
+|-- switch_model.py      # Show, list, or switch the default model
+|-- prompt.txt           # Write your prompt here
+|-- model_config.json    # Model profiles and API key env matching
+|-- .env.example         # Example local env file
+|-- data/                # Optional source/reference files
+|-- inputs/              # Drop files here to attach them to the call
+|-- outputs/             # Generated responses
+`-- llm_pipeline/        # Pipeline implementation
 ```
 
 ## Setup
@@ -39,7 +39,7 @@ The repo ignores `.env`, so your key will not be committed.
 
 Write your prompt in `prompt.txt`.
 
-Optionally copy text files, Markdown, JSON, CSV, code files, or PDFs into `inputs/`. Text-like files are included automatically. PDFs are supported if `pypdf` is installed:
+Optionally copy text files, Markdown, JSON, JSONL, CSV, code files, or PDFs into `inputs/`. Text-like files are included automatically. PDFs are supported if `pypdf` is installed:
 
 ```powershell
 pip install pypdf
@@ -53,7 +53,7 @@ python .\api_call.py
 
 The script prints the answer and saves two files in `outputs/`:
 
-- `.md`: human-readable response with metadata, token usage, and the original prompt
+- `.md`: human-readable response with metadata, token usage, reasoning content when returned, and the original prompt
 - `.json`: raw API response for debugging, exact usage details, or later processing
 
 Markdown is the default reading format because it is easy to open, search, copy, and archive. Keeping the raw JSON beside it is useful when you need provider metadata or exact response details.
@@ -72,27 +72,34 @@ Show the current default:
 python .\switch_model.py show
 ```
 
-Set a new default:
+Set non-thinking mode:
 
 ```powershell
-python .\switch_model.py set deepseek-reasoner
+python .\switch_model.py set deepseek-v4-pro-nonthinking
 ```
 
-You can also choose a model for one run without changing the default:
+Set thinking mode back:
 
 ```powershell
-python .\api_call.py --model deepseek-reasoner
+python .\switch_model.py set deepseek-v4-pro
 ```
 
-## DeepSeek Model Override
+Choose a model for one run without changing the default:
 
-The default profile is named `deepseek-v4-pro`, and it uses the provider model value from `model_config.json`.
-
-If your DeepSeek account expects a different model string, add this to `.env`:
-
-```env
-DEEP_SEEK_MODEL=deepseek-chat
+```powershell
+python .\api_call.py --model deepseek-v4-pro-nonthinking
 ```
+
+## DeepSeek Thinking Mode
+
+The default profile is `deepseek-v4-pro`:
+
+- Provider model: `deepseek-v4-pro`
+- Thinking: `enabled`
+- Reasoning effort: `max`
+- Max tokens: `8192`
+
+Increase or reduce `max_tokens` in `model_config.json` when you want longer or shorter responses. This caps generated output; your full request still has to fit inside the provider context window.
 
 ## GitHub Safety
 

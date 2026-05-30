@@ -12,7 +12,7 @@ from llm_pipeline.attachments import (
     render_attachments_for_prompt,
     skipped_attachment_summary,
 )
-from llm_pipeline.client import call_openai_compatible_chat, extract_answer_text
+from llm_pipeline.client import call_openai_compatible_chat, extract_answer_text, extract_reasoning_text
 from llm_pipeline.config import load_config
 from llm_pipeline.env import first_existing_env, load_env_file
 
@@ -25,6 +25,7 @@ class PipelineRunResult:
     markdown_path: Path
     json_path: Path
     answer: str
+    reasoning: str
     usage: dict[str, Any]
     included_attachments: list[str]
     skipped_attachments: list[str]
@@ -52,6 +53,7 @@ def run_pipeline(
 
     response = call_openai_compatible_chat(profile, config, api_key, messages)
     answer = extract_answer_text(response).strip()
+    reasoning = extract_reasoning_text(response).strip()
     usage = _extract_usage(response)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -67,6 +69,9 @@ def run_pipeline(
         "display_name": profile.display_name,
         "provider": profile.provider,
         "provider_model": profile.resolved_model,
+        "thinking": profile.thinking or "provider default",
+        "reasoning_effort": profile.reasoning_effort or "provider default",
+        "max_tokens": profile.max_tokens or "provider default",
         "api_key_env": api_key_env,
         "prompt_path": str(prompt_path),
         "input_dir": str(input_dir),
@@ -76,7 +81,7 @@ def run_pipeline(
     }
 
     markdown_path.write_text(
-        _render_markdown(prompt, answer, metadata),
+        _render_markdown(prompt, answer, reasoning, metadata),
         encoding="utf-8",
     )
     json_path.write_text(
@@ -91,6 +96,7 @@ def run_pipeline(
         markdown_path=markdown_path,
         json_path=json_path,
         answer=answer,
+        reasoning=reasoning,
         usage=usage,
         included_attachments=included,
         skipped_attachments=skipped,
@@ -114,7 +120,7 @@ def _compose_user_content(prompt: str, attachment_context: str, skipped: list[st
     return "\n\n".join(sections)
 
 
-def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
+def _render_markdown(prompt: str, answer: str, reasoning: str, metadata: dict[str, Any]) -> str:
     included = metadata["included_attachments"] or ["None"]
     skipped = metadata["skipped_attachments"] or ["None"]
     usage_lines = _render_usage_lines(metadata.get("usage", {}))
@@ -124,6 +130,9 @@ def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
             "",
             f"- Time: {metadata['timestamp']}",
             f"- Model: {metadata['model_id']} ({metadata['provider_model']})",
+            f"- Thinking: {metadata['thinking']}",
+            f"- Reasoning effort: {metadata['reasoning_effort']}",
+            f"- Max tokens: {metadata['max_tokens']}",
             f"- API key env: {metadata['api_key_env']}",
             "- Included attachments: " + ", ".join(included),
             "- Skipped attachments: " + ", ".join(skipped),
@@ -136,6 +145,10 @@ def _render_markdown(prompt: str, answer: str, metadata: dict[str, Any]) -> str:
             "## Answer",
             "",
             answer or "(No answer text returned.)",
+            "",
+            "## Reasoning",
+            "",
+            reasoning or "(No reasoning_content returned.)",
             "",
         ]
     )
@@ -160,14 +173,24 @@ def _render_usage_lines(usage: dict[str, Any]) -> list[str]:
     prompt_tokens = usage.get("prompt_tokens")
     completion_tokens = usage.get("completion_tokens")
     total_tokens = usage.get("total_tokens")
+    reasoning_tokens = _nested_usage_value(usage, "completion_tokens_details", "reasoning_tokens")
     known_parts = []
     if prompt_tokens is not None:
         known_parts.append(f"prompt={prompt_tokens}")
     if completion_tokens is not None:
         known_parts.append(f"completion={completion_tokens}")
+    if reasoning_tokens is not None:
+        known_parts.append(f"reasoning={reasoning_tokens}")
     if total_tokens is not None:
         known_parts.append(f"total={total_tokens}")
 
     if known_parts:
         return ["- Usage: " + ", ".join(known_parts)]
     return ["- Usage: " + ", ".join(f"{key}={value}" for key, value in usage.items())]
+
+
+def _nested_usage_value(usage: dict[str, Any], section: str, key: str) -> Any:
+    value = usage.get(section)
+    if isinstance(value, dict):
+        return value.get(key)
+    return None

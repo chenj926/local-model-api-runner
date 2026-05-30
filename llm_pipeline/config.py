@@ -20,7 +20,9 @@ class ModelProfile:
     endpoint: str
     model: str
     api_key_env: tuple[str, ...]
-    temperature: float = 0.2
+    thinking: str | None = None
+    reasoning_effort: str | None = None
+    temperature: float | None = 0.2
     max_tokens: int | None = None
     model_env: str | None = None
 
@@ -35,6 +37,10 @@ class ModelProfile:
             if override:
                 return override
         return self.model
+
+    @property
+    def is_thinking_enabled(self) -> bool:
+        return self.thinking == "enabled"
 
 
 @dataclass(frozen=True)
@@ -111,6 +117,20 @@ def _parse_model(data: dict[str, Any]) -> ModelProfile:
         model=str(data["model"]),
         model_env=str(data["model_env"]) if data.get("model_env") else None,
         api_key_env=tuple(str(item) for item in api_key_env),
-        temperature=float(data.get("temperature", 0.2)),
+        thinking=_parse_optional_choice(data, "thinking", {"enabled", "disabled"}),
+        reasoning_effort=_parse_optional_choice(data, "reasoning_effort", {"high", "max"}),
+        temperature=float(data["temperature"]) if data.get("temperature") is not None else None,
         max_tokens=int(data["max_tokens"]) if data.get("max_tokens") else None,
     )
+
+
+def _parse_optional_choice(data: dict[str, Any], field: str, allowed: set[str]) -> str | None:
+    value = data.get(field)
+    if value is None:
+        return None
+
+    normalized = str(value).strip().lower()
+    if normalized not in allowed:
+        allowed_values = ", ".join(sorted(allowed))
+        raise ConfigError(f"Model '{data.get('id')}' {field} must be one of: {allowed_values}")
+    return normalized

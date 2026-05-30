@@ -22,8 +22,13 @@ def call_openai_compatible_chat(
     payload: dict[str, Any] = {
         "model": profile.resolved_model,
         "messages": messages,
-        "temperature": profile.temperature,
     }
+    if profile.thinking:
+        payload["thinking"] = {"type": profile.thinking}
+    if profile.reasoning_effort:
+        payload["reasoning_effort"] = profile.reasoning_effort
+    if profile.temperature is not None and not profile.is_thinking_enabled:
+        payload["temperature"] = profile.temperature
     if profile.max_tokens:
         payload["max_tokens"] = profile.max_tokens
 
@@ -77,6 +82,18 @@ def extract_answer_text(response: dict[str, Any]) -> str:
         return "\n".join(part for part in parts if part)
 
     return str(content)
+
+
+def extract_reasoning_text(response: dict[str, Any]) -> str:
+    choices = response.get("choices") or []
+    if not choices:
+        return ""
+
+    message = choices[0].get("message") or {}
+    reasoning_content = message.get("reasoning_content", "")
+    if isinstance(reasoning_content, str):
+        return reasoning_content
+    return str(reasoning_content) if reasoning_content else ""
 
 
 def _read_http_error(exc: urllib.error.HTTPError) -> str:

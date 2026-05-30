@@ -20,6 +20,7 @@ TEXT_EXTENSIONS = {
     ".java",
     ".js",
     ".json",
+    ".jsonl",
     ".jsx",
     ".log",
     ".md",
@@ -45,6 +46,7 @@ LANGUAGE_BY_EXTENSION = {
     ".java": "java",
     ".js": "javascript",
     ".json": "json",
+    ".jsonl": "jsonl",
     ".jsx": "jsx",
     ".md": "markdown",
     ".php": "php",
@@ -80,6 +82,8 @@ def collect_attachments(input_dir: Path, max_chars_per_file: int) -> list[Attach
 
     attachments: list[Attachment] = []
     for path in sorted(item for item in input_dir.rglob("*") if item.is_file()):
+        if _should_ignore_attachment(path):
+            continue
         relative_path = path.relative_to(input_dir).as_posix()
         attachment = _read_attachment(path, relative_path, max_chars_per_file)
         attachments.append(attachment)
@@ -132,6 +136,10 @@ def _read_attachment(path: Path, relative_path: str, max_chars: int) -> Attachme
         content=None,
         omitted_reason="binary or unsupported file type",
     )
+
+
+def _should_ignore_attachment(path: Path) -> bool:
+    return path.name in {".gitkeep", ".DS_Store", "Thumbs.db"}
 
 
 def _looks_text_like(path: Path) -> bool:

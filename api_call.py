@@ -30,6 +30,7 @@ def main() -> None:
     print(f"API key env: {result.api_key_env}")
     print(f"Included attachments: {len(result.included_attachments)}")
     print(f"Skipped attachments: {len(result.skipped_attachments)}")
+    print(f"Reasoning returned: {'yes' if result.reasoning else 'no'}")
     print(f"Usage: {_format_usage(result.usage)}")
     print(f"Saved markdown: {result.markdown_path}")
     print(f"Saved raw JSON: {result.json_path}")
@@ -51,17 +52,27 @@ def _format_usage(usage: dict[str, object]) -> str:
     prompt_tokens = usage.get("prompt_tokens")
     completion_tokens = usage.get("completion_tokens")
     total_tokens = usage.get("total_tokens")
+    reasoning_tokens = _nested_usage_value(usage, "completion_tokens_details", "reasoning_tokens")
     parts = []
     if prompt_tokens is not None:
         parts.append(f"prompt={prompt_tokens}")
     if completion_tokens is not None:
         parts.append(f"completion={completion_tokens}")
+    if reasoning_tokens is not None:
+        parts.append(f"reasoning={reasoning_tokens}")
     if total_tokens is not None:
         parts.append(f"total={total_tokens}")
 
     if parts:
         return ", ".join(parts)
     return ", ".join(f"{key}={value}" for key, value in usage.items())
+
+
+def _nested_usage_value(usage: dict[str, object], section: str, key: str) -> object | None:
+    value = usage.get(section)
+    if isinstance(value, dict):
+        return value.get(key)
+    return None
 
 
 if __name__ == "__main__":

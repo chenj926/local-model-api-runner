@@ -12,20 +12,23 @@
       "provider": "deepseek",
       "base_url": "https://api.deepseek.com",
       "endpoint": "/chat/completions",
-      "model": "deepseek-chat",
-      "model_env": "DEEP_SEEK_MODEL",
+      "model": "deepseek-v4-pro",
+      "thinking": "enabled",
+      "reasoning_effort": "max",
       "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
-      "temperature": 0.2
+      "max_tokens": 8192
     },
     {
-      "id": "deepseek-reasoner",
-      "display_name": "DeepSeek Reasoner",
+      "id": "deepseek-v4-pro-nonthinking",
+      "display_name": "DeepSeek V4 Pro Non-Thinking",
       "provider": "deepseek",
       "base_url": "https://api.deepseek.com",
       "endpoint": "/chat/completions",
-      "model": "deepseek-reasoner",
+      "model": "deepseek-v4-pro",
+      "thinking": "disabled",
       "api_key_env": ["DEEP_SEEK_API_KEY", "DEEPSEEK_API_KEY"],
-      "temperature": 0.2
+      "temperature": 0.2,
+      "max_tokens": 8192
     }
   ]
 }
