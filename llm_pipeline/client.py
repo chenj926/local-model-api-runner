@@ -17,7 +17,7 @@ def call_openai_compatible_chat(
     profile: ModelProfile,
     config: PipelineConfig,
     api_key: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": profile.resolved_model,

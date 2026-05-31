@@ -15,6 +15,7 @@ from llm_pipeline.attachments import (
 from llm_pipeline.client import call_openai_compatible_chat, extract_answer_text, extract_reasoning_text
 from llm_pipeline.config import load_config
 from llm_pipeline.env import first_existing_env, load_env_file
+from llm_pipeline.history import assistant_message_from_response, load_conversation_messages
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class PipelineRunResult:
     answer: str
     reasoning: str
     usage: dict[str, Any]
+    continued_from: Path | None
     included_attachments: list[str]
     skipped_attachments: list[str]
 
@@ -37,6 +39,7 @@ def run_pipeline(
     input_dir: Path,
     output_dir: Path,
     model_id: str | None = None,
+    continue_from: Path | None = None,
 ) -> PipelineRunResult:
     load_env_file(root_dir / ".env")
     config = load_config(root_dir / "model_config.json")
@@ -49,7 +52,8 @@ def run_pipeline(
     skipped = skipped_attachment_summary(attachments)
 
     user_content = _compose_user_content(prompt, attachment_context, skipped)
-    messages = _build_messages(config.system_prompt, user_content)
+    history_messages = load_conversation_messages(continue_from) if continue_from else None
+    messages = _build_messages(config.system_prompt, user_content, history_messages)
 
     response = call_openai_compatible_chat(profile, config, api_key, messages)
     answer = extract_answer_text(response).strip()
@@ -73,6 +77,7 @@ def run_pipeline(
         "reasoning_effort": profile.reasoning_effort or "provider default",
         "max_tokens": profile.max_tokens or "provider default",
         "api_key_env": api_key_env,
+        "continued_from": str(continue_from) if continue_from else None,
         "prompt_path": str(prompt_path),
         "input_dir": str(input_dir),
         "included_attachments": included,
@@ -84,8 +89,19 @@ def run_pipeline(
         _render_markdown(prompt, answer, reasoning, metadata),
         encoding="utf-8",
     )
+    assistant_message = assistant_message_from_response(response)
     json_path.write_text(
-        json.dumps({"metadata": metadata, "response": response}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(
+            {
+                "metadata": metadata,
+                "request": {"messages": messages},
+                "conversation": {"messages": [*messages, assistant_message]},
+                "response": response,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -98,14 +114,19 @@ def run_pipeline(
         answer=answer,
         reasoning=reasoning,
         usage=usage,
+        continued_from=continue_from,
         included_attachments=included,
         skipped_attachments=skipped,
     )
 
 
-def _build_messages(system_prompt: str, user_content: str) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = []
-    if system_prompt:
+def _build_messages(
+    system_prompt: str,
+    user_content: str,
+    history_messages: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = [dict(message) for message in history_messages or []]
+    if system_prompt and not _has_system_message(messages):
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": user_content})
     return messages
@@ -134,6 +155,7 @@ def _render_markdown(prompt: str, answer: str, reasoning: str, metadata: dict[st
             f"- Reasoning effort: {metadata['reasoning_effort']}",
             f"- Max tokens: {metadata['max_tokens']}",
             f"- API key env: {metadata['api_key_env']}",
+            f"- Continued from: {metadata['continued_from'] or 'None'}",
             "- Included attachments: " + ", ".join(included),
             "- Skipped attachments: " + ", ".join(skipped),
             *usage_lines,
@@ -157,6 +179,10 @@ def _render_markdown(prompt: str, answer: str, reasoning: str, metadata: dict[st
 def _safe_filename(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-")
     return cleaned or "model"
+
+
+def _has_system_message(messages: list[dict[str, Any]]) -> bool:
+    return any(message.get("role") == "system" for message in messages)
 
 
 def _extract_usage(response: dict[str, Any]) -> dict[str, Any]:

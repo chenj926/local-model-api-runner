@@ -51,10 +51,26 @@ Run the pipeline:
 python .\api_call.py
 ```
 
+By default, every run starts a new chat. This matches opening a new conversation in a web UI.
+
+Continue from the latest saved chat:
+
+```powershell
+python .\api_call.py --continue-last
+```
+
+Continue from a specific saved chat:
+
+```powershell
+python .\api_call.py --continue-from outputs\20260530_012511_deepseek-v4-pro.json
+```
+
+You can update `prompt.txt` and change files in `inputs/` before continuing. The new prompt and attachments become the next user turn, while the previous conversation is sent as context.
+
 The script prints the answer and saves two files in `outputs/`:
 
 - `.md`: human-readable response with metadata, token usage, reasoning content when returned, and the original prompt
-- `.json`: raw API response for debugging, exact usage details, or later processing
+- `.json`: raw API response plus request/conversation history for continuation, debugging, exact usage details, or later processing
 
 Markdown is the default reading format because it is easy to open, search, copy, and archive. Keeping the raw JSON beside it is useful when you need provider metadata or exact response details.
 
@@ -100,6 +116,8 @@ The default profile is `deepseek-v4-pro`:
 - Max tokens: provider default
 
 Add `max_tokens` to a model profile in `model_config.json` only when you want to explicitly cap generated output. Without it, the request uses the provider default; your full request still has to fit inside the provider context window.
+
+DeepSeek chat completions are stateless: the server does not remember earlier turns. This runner handles continuation locally by loading a previous output JSON and sending its saved conversation history with your new prompt.
 
 ## GitHub Safety
 
