@@ -126,18 +126,19 @@ def _build_messages(
     history_messages: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = [dict(message) for message in history_messages or []]
-    if system_prompt and not _has_system_message(messages):
-        messages.append({"role": "system", "content": system_prompt})
+    if system_prompt:
+        messages = _ensure_system_message_first(messages, system_prompt)
     messages.append({"role": "user", "content": user_content})
     return messages
 
 
 def _compose_user_content(prompt: str, attachment_context: str, skipped: list[str]) -> str:
-    sections = [prompt or "(No prompt was provided.)"]
+    sections = []
     if attachment_context:
         sections.append(attachment_context)
     if skipped:
         sections.append("Skipped attachments:\n" + "\n".join(f"- {item}" for item in skipped))
+    sections.append("User request:\n" + (prompt or "(No prompt was provided.)"))
     return "\n\n".join(sections)
 
 
@@ -181,8 +182,12 @@ def _safe_filename(value: str) -> str:
     return cleaned or "model"
 
 
-def _has_system_message(messages: list[dict[str, Any]]) -> bool:
-    return any(message.get("role") == "system" for message in messages)
+def _ensure_system_message_first(messages: list[dict[str, Any]], system_prompt: str) -> list[dict[str, Any]]:
+    system_messages = [message for message in messages if message.get("role") == "system"]
+    non_system_messages = [message for message in messages if message.get("role") != "system"]
+    if system_messages:
+        return [system_messages[0], *non_system_messages]
+    return [{"role": "system", "content": system_prompt}, *non_system_messages]
 
 
 def _extract_usage(response: dict[str, Any]) -> dict[str, Any]:
